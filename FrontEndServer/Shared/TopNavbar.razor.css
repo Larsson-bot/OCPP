@@ -1,0 +1,34 @@
+﻿ul {
+    list-style: none;
+}
+
+tr th td {
+    padding-left: 30px;
+}
+
+.bg-nav {
+    background-color: #004080;
+    color: white !important;
+}
+
+
+
+#nav a {
+    color: white;
+}
+
+#nav button {
+    color: white;
+}
+
+
+.log-header {
+    text-align: center;
+    font-size: 32px;
+}
+
+.login-btn {
+    background-color: transparent;
+    border: none;
+    color: black;
+}

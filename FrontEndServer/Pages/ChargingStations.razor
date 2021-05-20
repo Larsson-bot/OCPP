@@ -1,0 +1,144 @@
+﻿@page "/stations"
+@inject HttpClient Http
+@using FrontEndServer.Models
+@using System.Net.WebSockets
+@using System.Text
+@using System.Threading
+@using Newtonsoft.Json
+@implements IDisposable
+
+
+<h3>ChargingStations</h3>
+
+<div class="container">
+    <h1 class="headline">Cases</h1>
+    @if (chargingStationList == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>SerialNumber</th>
+                    <th>SocketId</th>
+                    <th>Ip</th>
+                    <th>Port</th>
+                    <th>Available</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in chargingStationList)
+                {
+                    <tr>
+                        <td>@item.Id</td>
+                        <td>@item.SerialNumber</td>
+                        <td>@item.SocketId</td>
+                        <td>@item.Ip</td>
+                        <td>@item.Port</td>
+                        <td>@item.Available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    @if (webSocket.State == WebSocketState.Open)
+    {
+        <p>@log</p>
+
+    }
+
+    <input type="text" placeholder="Enter SocketId" @bind="message" />
+    <button @onclick="SendMessageAsync" class="btn btn-secondary">Start Transaction</button>
+    <button @onclick="StopConnection" class="btn btn-secondary">Stop WebSocketConnection</button>
+    <button @onclick="StopTransactionConnection" class="btn btn-secondary">Stop Transaction</button>
+</div>
+@*@onclick="() => addtoWishlist(product.Id)"*@
+@code {
+
+    CancellationTokenSource disposalTokenSource = new CancellationTokenSource();
+    ClientWebSocket webSocket = new ClientWebSocket();
+    private IEnumerable<ChargingStationModel> chargingStationList;
+    private string messageFromServer;
+    private string message;
+    private string log;
+    protected override async Task OnInitializedAsync()
+    {
+        await webSocket.ConnectAsync(new Uri("ws://127.0.0.1:5000" + "/WebPage"), cancellationToken: CancellationToken.None);
+        _ = ReceiveLoop();
+        chargingStationList = await Http.GetFromJsonAsync<IEnumerable<ChargingStationModel>>("https://csmsapi2021.azurewebsites.net/api/chargingpoints");
+    }
+
+
+    public async Task SendMessageAsync()
+    {
+
+        List<string> list = new List<string>();
+
+        list.Add("StartTransaction");
+        list.Add("CP-25");
+
+        log += $"Sending: {message}\n";
+        //var dataToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
+        //var model1 = new WebRequestModel{ Request = "StartTransaction", SocketId ="CP-25" };
+        var json12 = JsonConvert.SerializeObject(list);
+        //var message1 = JsonConvert.SerializeObject(model1);
+        //var json1 = JsonConvert.SerializeObject(message1);
+        var dataToSend = Encoding.UTF8.GetBytes(json12);
+        await webSocket.SendAsync(dataToSend, WebSocketMessageType.Text, true, cancellationToken: CancellationToken.None);
+    }
+
+
+    public void StopConnection()
+    {
+        Dispose();
+    }
+
+    public async Task StopTransactionConnection()
+    {
+        List<string> list = new List<string>();
+
+        list.Add("StopTransaction");
+        list.Add("CP-25");
+        list.Add(messageFromServer);
+        var json12 = JsonConvert.SerializeObject(list);
+        var dataToSend = Encoding.UTF8.GetBytes(json12);
+        await webSocket.SendAsync(dataToSend, WebSocketMessageType.Text, true, cancellationToken: CancellationToken.None);
+
+    }
+
+    public async Task ReceiveLoop()
+    {
+        var buffer = new ArraySegment<byte>(new byte[1024]);
+        Console.WriteLine("This is it");
+        while (!disposalTokenSource.IsCancellationRequested)
+        {
+            var received = await webSocket.ReceiveAsync(buffer, disposalTokenSource.Token);
+            var receivedText = Encoding.UTF8.GetString(buffer.Array, 0, received.Count);
+            log += $"Received: {receivedText}\n";
+            Console.WriteLine(receivedText);
+            messageFromServer = receivedText;
+            StateHasChanged();
+        }
+    }
+
+
+    public void Dispose()
+    {
+        disposalTokenSource.Cancel();
+        _ = webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Bye", CancellationToken.None);
+    }
+
+
+    //public class FromUser
+    //{
+    //    public string InputFromUser { get; set; }
+    //}
+
+    //public void OnPress()
+    //{
+    //    Console.WriteLine(GetFromUser);
+    //}
+}

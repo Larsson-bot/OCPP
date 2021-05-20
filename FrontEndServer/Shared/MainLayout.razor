@@ -1,0 +1,20 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <div class="main">
+        <div>
+            @*<span class="navbar-text">
+                <a class="nav-link" href="login">Sign in</a>
+            </span>*@
+            <TopNavbar/>
+        </div>
+
+        <div class="content px-4">
+            @Body
+        </div>
+    </div>
+</div>
